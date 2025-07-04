@@ -12,3 +12,7 @@ The `~/.gatorconfig.json` has
   "db_url": "postgress://example.com",
 }
 ```
+
+## Postgresql15
+
+Is used as the database
