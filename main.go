@@ -9,14 +9,22 @@ import (
 
 func main() {
 	fmt.Println("Blog Aggregator")
-	cfg, err := config.NewConfig()
+
+	cfg, err := config.Read()
 	if err != nil {
-		log.Fatalf("Config Error: %v", err)
+		log.Fatalf("Config Read Error: %v", err)
 	}
+	fmt.Printf("Read config: %+v\n", cfg)
+
 	err = cfg.SetUser("ESh4d0w")
 	if err != nil {
 		log.Fatalf("Error setting User: %v", err)
 	}
-	fmt.Printf("%+v", cfg)
 
+	cfg, err = config.Read()
+	if err != nil {
+		log.Fatalf("Config ReRead Error: %v", err)
+	}
+
+	fmt.Printf("Read config again: %+v\n", cfg)
 }

@@ -14,19 +14,12 @@ type Config struct {
 	CurrentUserName string `json:"current_user_name"`
 }
 
-func NewConfig() (*Config, error) {
-	cfg, err := read()
-	if err != nil {
-		return nil, fmt.Errorf("Couldn't read config: %v\nPlease Check the Readme!", err)
-	}
-	return &cfg, nil
-}
 func (c *Config) SetUser(name string) error {
 	c.CurrentUserName = name
 	return write(*c)
 }
 
-func read() (Config, error) {
+func Read() (Config, error) {
 	path, err := getConfigFilePath()
 	if err != nil {
 		return Config{}, err
