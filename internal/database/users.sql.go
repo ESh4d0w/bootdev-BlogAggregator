@@ -8,9 +8,11 @@ package database
 import (
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
-const createUser = `-- name: CreateUser :one
+const userCreate = `-- name: UserCreate :one
 INSERT INTO users (id, created_at, updated_at, name)
 VALUES (
     $1,
@@ -21,15 +23,15 @@ VALUES (
 RETURNING id, created_at, updated_at, name
 `
 
-type CreateUserParams struct {
-	ID        string
+type UserCreateParams struct {
+	ID        uuid.UUID
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Name      string
 }
 
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser,
+func (q *Queries) UserCreate(ctx context.Context, arg UserCreateParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, userCreate,
 		arg.ID,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -45,12 +47,12 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
-const getUserByName = `-- name: GetUserByName :one
+const userGetByName = `-- name: UserGetByName :one
 SELECT id, created_at, updated_at, name FROM users WHERE name = $1
 `
 
-func (q *Queries) GetUserByName(ctx context.Context, name string) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByName, name)
+func (q *Queries) UserGetByName(ctx context.Context, name string) (User, error) {
+	row := q.db.QueryRowContext(ctx, userGetByName, name)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -61,12 +63,12 @@ func (q *Queries) GetUserByName(ctx context.Context, name string) (User, error) 
 	return i, err
 }
 
-const getUserList = `-- name: GetUserList :many
+const userGetList = `-- name: UserGetList :many
 SELECT id, created_at, updated_at, name FROM users
 `
 
-func (q *Queries) GetUserList(ctx context.Context) ([]User, error) {
-	rows, err := q.db.QueryContext(ctx, getUserList)
+func (q *Queries) UserGetList(ctx context.Context) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, userGetList)
 	if err != nil {
 		return nil, err
 	}
@@ -93,11 +95,11 @@ func (q *Queries) GetUserList(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
-const reset = `-- name: Reset :exec
+const userReset = `-- name: UserReset :exec
 DELETE FROM users
 `
 
-func (q *Queries) Reset(ctx context.Context) error {
-	_, err := q.db.ExecContext(ctx, reset)
+func (q *Queries) UserReset(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, userReset)
 	return err
 }

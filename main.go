@@ -4,15 +4,18 @@ import (
 	"database/sql"
 	"log"
 	"os"
+	"time"
 
 	"github.com/esh4d0w/bootdev-BlogAggregator/internal/config"
 	"github.com/esh4d0w/bootdev-BlogAggregator/internal/database"
+	"github.com/esh4d0w/bootdev-BlogAggregator/internal/rss"
 	_ "github.com/lib/pq"
 )
 
 type state struct {
-	db  *database.Queries
-	cfg *config.Config
+	db        *database.Queries
+	cfg       *config.Config
+	rssClinet *rss.Client
 }
 
 func main() {
@@ -26,9 +29,12 @@ func main() {
 	db, err := sql.Open("postgres", cfg.DBUrl)
 	dbQueries := database.New(db)
 
+	rssClient := rss.NewClient(5 * time.Second)
+
 	programState := state{
-		db:  dbQueries,
-		cfg: &cfg,
+		db:        dbQueries,
+		cfg:       &cfg,
+		rssClinet: &rssClient,
 	}
 
 	cmds := commands{
@@ -38,6 +44,9 @@ func main() {
 	cmds.register("register", handlerRegister)
 	cmds.register("reset", handlerReset)
 	cmds.register("users", handlerUserList)
+	cmds.register("agg", handlerAggregation)
+	cmds.register("addfeed", handlerFeedAdd)
+	cmds.register("feeds", handlerFeedList)
 
 	var args []string = os.Args
 	if len(args) < 2 {
