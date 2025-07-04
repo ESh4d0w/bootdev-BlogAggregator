@@ -1,30 +1,40 @@
 package main
 
 import (
-	"fmt"
 	"log"
+	"os"
 
 	"github.com/esh4d0w/bootdev-BlogAggregator/internal/config"
 )
 
+type state struct {
+	cfg *config.Config
+}
+
 func main() {
-	fmt.Println("Blog Aggregator")
+	log.Printf("Blog Aggregator")
 
 	cfg, err := config.Read()
 	if err != nil {
 		log.Fatalf("Config Read Error: %v", err)
 	}
-	fmt.Printf("Read config: %+v\n", cfg)
-
-	err = cfg.SetUser("ESh4d0w")
-	if err != nil {
-		log.Fatalf("Error setting User: %v", err)
+	programState := state{
+		cfg: &cfg,
 	}
-
-	cfg, err = config.Read()
-	if err != nil {
-		log.Fatalf("Config ReRead Error: %v", err)
+	cmds := commands{
+		nameToFunction: make(map[string]func(*state, command) error),
 	}
-
-	fmt.Printf("Read config again: %+v\n", cfg)
+	cmds.register("login", handlerLogin)
+	var args []string = os.Args
+	if len(args) < 2 {
+		log.Fatalf("Need atleast 1 argument")
+	}
+	com := command{
+		name: args[1],
+		args: args[2:],
+	}
+	err = cmds.run(&programState, com)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
