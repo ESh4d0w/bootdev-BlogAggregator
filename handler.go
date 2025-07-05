@@ -45,9 +45,13 @@ func handlerReset(s *state, cmd command) error {
 	if err != nil {
 		return fmt.Errorf("Reset User Failed: %v", err)
 	}
-	err = s.db.FeedReset(context.Background())
+	err = s.db.FeedsReset(context.Background())
 	if err != nil {
 		return fmt.Errorf("Reset Feed Failed: %v", err)
+	}
+	err = s.db.FeedFollowsReset(context.Background())
+	if err != nil {
+		return fmt.Errorf("Reset FeedFollows Failed: %v", err)
 	}
 
 	log.Printf("Successfully reset")

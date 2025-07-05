@@ -12,13 +12,13 @@ import (
 	"github.com/google/uuid"
 )
 
-const feedCreate = `-- name: FeedCreate :one
+const feedsCreate = `-- name: FeedsCreate :one
 INSERT INTO feeds (id, created_at, updated_at, name, url, user_id)
 VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id, created_at, updated_at, name, url, user_id
 `
 
-type FeedCreateParams struct {
+type FeedsCreateParams struct {
 	ID        uuid.UUID
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -27,8 +27,8 @@ type FeedCreateParams struct {
 	UserID    uuid.UUID
 }
 
-func (q *Queries) FeedCreate(ctx context.Context, arg FeedCreateParams) (Feed, error) {
-	row := q.db.QueryRowContext(ctx, feedCreate,
+func (q *Queries) FeedsCreate(ctx context.Context, arg FeedsCreateParams) (Feed, error) {
+	row := q.db.QueryRowContext(ctx, feedsCreate,
 		arg.ID,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -48,12 +48,31 @@ func (q *Queries) FeedCreate(ctx context.Context, arg FeedCreateParams) (Feed, e
 	return i, err
 }
 
-const feedGetList = `-- name: FeedGetList :many
+const feedsGetByURL = `-- name: FeedsGetByURL :one
+SELECT id, created_at, updated_at, name, url, user_id FROM feeds
+WHERE url = $1
+`
+
+func (q *Queries) FeedsGetByURL(ctx context.Context, url string) (Feed, error) {
+	row := q.db.QueryRowContext(ctx, feedsGetByURL, url)
+	var i Feed
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.Url,
+		&i.UserID,
+	)
+	return i, err
+}
+
+const feedsGetList = `-- name: FeedsGetList :many
 SELECT id, created_at, updated_at, name, url, user_id FROM feeds
 `
 
-func (q *Queries) FeedGetList(ctx context.Context) ([]Feed, error) {
-	rows, err := q.db.QueryContext(ctx, feedGetList)
+func (q *Queries) FeedsGetList(ctx context.Context) ([]Feed, error) {
+	rows, err := q.db.QueryContext(ctx, feedsGetList)
 	if err != nil {
 		return nil, err
 	}
@@ -82,11 +101,11 @@ func (q *Queries) FeedGetList(ctx context.Context) ([]Feed, error) {
 	return items, nil
 }
 
-const feedReset = `-- name: FeedReset :exec
+const feedsReset = `-- name: FeedsReset :exec
 DELETE FROM feeds
 `
 
-func (q *Queries) FeedReset(ctx context.Context) error {
-	_, err := q.db.ExecContext(ctx, feedReset)
+func (q *Queries) FeedsReset(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, feedsReset)
 	return err
 }

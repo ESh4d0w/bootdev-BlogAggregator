@@ -28,19 +28,15 @@ func handlerAggregation(s *state, cmd command) error {
 
 }
 
-func handlerFeedAdd(s *state, cmd command) error {
+func handlerFeedsAdd(s *state, cmd command, user database.User) error {
 	if s == nil {
-		panic("handler.go:handlerFeedAdd doesn't have a state")
-	}
-	user, err := s.db.UserGetByName(context.Background(), s.cfg.CurrentUserName)
-	if err != nil {
-		return fmt.Errorf("Not found in database: %v", err)
+		panic("handler.go:handlerFeedsAdd doesn't have a state")
 	}
 	if len(cmd.args) < 2 {
 		return fmt.Errorf("FeedAdd requires 2 Arguments: <name> <url>")
 	}
 
-	feed, err := s.db.FeedCreate(context.Background(), database.FeedCreateParams{
+	feed, err := s.db.FeedsCreate(context.Background(), database.FeedsCreateParams{
 		ID:        uuid.New(),
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
@@ -53,23 +49,31 @@ func handlerFeedAdd(s *state, cmd command) error {
 	}
 
 	formatFeed(feed, user)
+	handlerFeedFollowsAdd(
+		s,
+		command{
+			name: "handlerFeedsAddForward",
+			args: []string{cmd.args[1]},
+		},
+		user,
+	)
 	return nil
 }
 
-func handlerFeedList(s *state, cmd command) error {
+func handlerFeedsList(s *state, cmd command) error {
 	if s == nil {
-		panic("handler.go:handlerFeedList doesn't have a state")
+		panic("handler.go:handlerFeedsList doesn't have a state")
 	}
 	if len(cmd.args) != 0 {
-		return fmt.Errorf("FeedList expects no arguments.")
+		return fmt.Errorf("FeedsList expects no arguments.")
 	}
 
-	feedList, err := s.db.FeedGetList(context.Background())
+	feedsList, err := s.db.FeedsGetList(context.Background())
 	if err != nil {
-		return fmt.Errorf("Can't get feed List from DB")
+		return fmt.Errorf("Can't get feeds List from DB")
 	}
 
-	for _, feed := range feedList {
+	for _, feed := range feedsList {
 		user, err := s.db.UserGetByID(context.Background(), feed.UserID)
 		if err != nil {
 			return fmt.Errorf("Couldn't get User %v", feed.UserID)
