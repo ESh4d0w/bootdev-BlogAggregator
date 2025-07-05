@@ -51,7 +51,8 @@ func handlerFeedAdd(s *state, cmd command) error {
 	if err != nil {
 		return fmt.Errorf("Can't create feed: %v", err)
 	}
-	formatFeed(feed)
+
+	formatFeed(feed, user)
 	return nil
 }
 
@@ -68,21 +69,24 @@ func handlerFeedList(s *state, cmd command) error {
 		return fmt.Errorf("Can't get feed List from DB")
 	}
 
-	formatFeedList(feedList)
+	for _, feed := range feedList {
+		user, err := s.db.UserGetByID(context.Background(), feed.UserID)
+		if err != nil {
+			return fmt.Errorf("Couldn't get User %v", feed.UserID)
+		}
+		formatFeed(feed, user)
+	}
+
 	return nil
 }
 
-func formatFeed(feed database.Feed) {
+func formatFeed(feed database.Feed, user database.User) {
+	log.Printf("==================")
 	log.Printf("%-20s: %-20s\n", "ID", feed.ID)
 	log.Printf("%-20s: %-20s\n", "Created", feed.CreatedAt)
 	log.Printf("%-20s: %-20s\n", "Updated", feed.UpdatedAt)
 	log.Printf("%-20s: %-20s\n", "Name", feed.Name)
 	log.Printf("%-20s: %-20s\n", "Url", feed.Url)
-	log.Printf("%-20s: %-20s\n", "User ID", feed.UserID)
-}
-
-func formatFeedList(feedList []database.FeedGetListRow) {
-	for _, feed := range feedList {
-		log.Printf("%-15s: %-20s %-20s", feed.UserName.String, feed.Name, feed.Url)
-	}
+	log.Printf("%-20s: %-20s\n", "User Name", user.Name)
+	log.Printf("==================")
 }

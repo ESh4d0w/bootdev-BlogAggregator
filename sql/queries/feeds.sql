@@ -4,12 +4,7 @@ VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: FeedGetList :many
-SELECT feeds.name, feeds.url, users.name as user_name
-FROM feeds
-LEFT JOIN users
-ON feeds.user_id = users.id
-ORDER BY user_name;
-
+SELECT * FROM feeds;
 
 -- name: FeedReset :exec
 DELETE FROM feeds;

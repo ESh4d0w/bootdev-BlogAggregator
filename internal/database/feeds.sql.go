@@ -7,7 +7,6 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -50,29 +49,26 @@ func (q *Queries) FeedCreate(ctx context.Context, arg FeedCreateParams) (Feed, e
 }
 
 const feedGetList = `-- name: FeedGetList :many
-SELECT feeds.name, feeds.url, users.name as user_name
-FROM feeds
-LEFT JOIN users
-ON feeds.user_id = users.id
-ORDER BY user_name
+SELECT id, created_at, updated_at, name, url, user_id FROM feeds
 `
 
-type FeedGetListRow struct {
-	Name     string
-	Url      string
-	UserName sql.NullString
-}
-
-func (q *Queries) FeedGetList(ctx context.Context) ([]FeedGetListRow, error) {
+func (q *Queries) FeedGetList(ctx context.Context) ([]Feed, error) {
 	rows, err := q.db.QueryContext(ctx, feedGetList)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []FeedGetListRow
+	var items []Feed
 	for rows.Next() {
-		var i FeedGetListRow
-		if err := rows.Scan(&i.Name, &i.Url, &i.UserName); err != nil {
+		var i Feed
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Name,
+			&i.Url,
+			&i.UserID,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
