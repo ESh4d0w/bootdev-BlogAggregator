@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/esh4d0w/bootdev-BlogAggregator/internal/database"
@@ -14,18 +16,79 @@ func handlerAggregation(s *state, cmd command) error {
 	if s == nil {
 		panic("hander.go:handlerAggregation doesn't have a state")
 	}
-	if len(cmd.args) != 0 {
-		return fmt.Errorf("Aggegation expect 0 arguments")
+	if len(cmd.args) != 1 {
+		return fmt.Errorf("Aggegation expect 1 arg: <time_between_reqs>")
 	}
 
-	feed, err := s.rssClinet.FetchFeed(context.Background(), `https://www.wagslane.dev/index.xml`)
+	timeBetweenRequests, err := time.ParseDuration(cmd.args[0])
 	if err != nil {
-		return fmt.Errorf("FetchFeed failed :%v", err)
+		return fmt.Errorf("Invalid <time_between_reqs>: %v", err)
 	}
-	log.Printf("+%v", feed)
 
-	return nil
+	ticker := time.NewTicker(timeBetweenRequests)
+	for ; ; <-ticker.C {
+		feedsScrapeFeeds(s)
+	}
+}
 
+func feedsScrapeFeeds(s *state) {
+	if s == nil {
+		panic("hander.go:feedsScrapeFeeds doesn't have a state")
+	}
+	feed, err := s.db.FeedsGetNextToFetch(context.Background())
+	if err != nil {
+		log.Printf("FeedsGetNext toFetch failed: %v", err)
+		return
+	}
+	log.Println("Found Feed to Fetch")
+	feedsScrapeFeed(s, feed)
+}
+
+func feedsScrapeFeed(s *state, feed database.Feed) {
+	_, err := s.db.FeedsMarkedFetched(context.Background(), feed.ID)
+	if err != nil {
+		log.Printf("Couldn't mark Feed %s as Fetched: %v\n", feed.Name, err)
+		return
+	}
+	rssFeed, err := s.rssClinet.FetchFeed(context.Background(), feed.Url)
+	if err != nil {
+		log.Printf("Couldn't fetch Feed %s: %v\n", feed.Name, err)
+		return
+	}
+
+	for _, item := range rssFeed.Channel.Item {
+		description := sql.NullString{
+			String: item.Description,
+			Valid:  true,
+		}
+		publishedAt := sql.NullTime{}
+		if t, err := time.Parse(time.RFC1123Z, item.PubDate); err == nil {
+			publishedAt = sql.NullTime{
+				Time:  t,
+				Valid: true,
+			}
+		}
+		log.Printf("Found Title: %-20s\n", item.Title)
+		_, err := s.db.PostsCreate(context.Background(), database.PostsCreateParams{
+			ID:          uuid.New(),
+			CreatedAt:   time.Now().UTC(),
+			UpdatedAt:   time.Now().UTC(),
+			Title:       item.Title,
+			Url:         item.Link,
+			Description: description,
+			PublishedAt: publishedAt,
+			FeedID:      feed.ID,
+		})
+		if err != nil {
+			if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+				continue
+			}
+			log.Printf("Couldn't create post: %v", err)
+			continue
+		}
+
+	}
+	log.Printf("Fetched Feed %s found %d posts\n", feed.Name, len(rssFeed.Channel.Item))
 }
 
 func handlerFeedsAdd(s *state, cmd command, user database.User) error {
@@ -92,5 +155,6 @@ func formatFeed(feed database.Feed, user database.User) {
 	log.Printf("%-20s: %-20s\n", "Name", feed.Name)
 	log.Printf("%-20s: %-20s\n", "Url", feed.Url)
 	log.Printf("%-20s: %-20s\n", "User Name", user.Name)
+	log.Printf("%-20s: %-20v\n", "Last Fetched At", feed.LastFetchedAt)
 	log.Printf("==================")
 }

@@ -50,6 +50,7 @@ func main() {
 	cmds.register("follow", middlewareLoggedIn(handlerFeedFollowsAdd))
 	cmds.register("following", middlewareLoggedIn(handlerFeedFollowsForUser))
 	cmds.register("unfollow", middlewareLoggedIn(handlerFeedFollowsDelete))
+	cmds.register("browse", middlewareLoggedIn(handlerPostBrowse))
 
 	var args []string = os.Args
 	if len(args) < 2 {

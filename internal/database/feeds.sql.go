@@ -15,7 +15,7 @@ import (
 const feedsCreate = `-- name: FeedsCreate :one
 INSERT INTO feeds (id, created_at, updated_at, name, url, user_id)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, created_at, updated_at, name, url, user_id
+RETURNING id, created_at, updated_at, name, url, user_id, last_fetched_at
 `
 
 type FeedsCreateParams struct {
@@ -44,12 +44,15 @@ func (q *Queries) FeedsCreate(ctx context.Context, arg FeedsCreateParams) (Feed,
 		&i.Name,
 		&i.Url,
 		&i.UserID,
+		&i.LastFetchedAt,
 	)
 	return i, err
 }
 
 const feedsGetByURL = `-- name: FeedsGetByURL :one
-SELECT id, created_at, updated_at, name, url, user_id FROM feeds
+
+SELECT id, created_at, updated_at, name, url, user_id, last_fetched_at 
+FROM feeds
 WHERE url = $1
 `
 
@@ -63,12 +66,15 @@ func (q *Queries) FeedsGetByURL(ctx context.Context, url string) (Feed, error) {
 		&i.Name,
 		&i.Url,
 		&i.UserID,
+		&i.LastFetchedAt,
 	)
 	return i, err
 }
 
 const feedsGetList = `-- name: FeedsGetList :many
-SELECT id, created_at, updated_at, name, url, user_id FROM feeds
+
+SELECT id, created_at, updated_at, name, url, user_id, last_fetched_at 
+FROM feeds
 `
 
 func (q *Queries) FeedsGetList(ctx context.Context) ([]Feed, error) {
@@ -87,6 +93,7 @@ func (q *Queries) FeedsGetList(ctx context.Context) ([]Feed, error) {
 			&i.Name,
 			&i.Url,
 			&i.UserID,
+			&i.LastFetchedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -101,7 +108,54 @@ func (q *Queries) FeedsGetList(ctx context.Context) ([]Feed, error) {
 	return items, nil
 }
 
+const feedsGetNextToFetch = `-- name: FeedsGetNextToFetch :one
+
+SELECT id, created_at, updated_at, name, url, user_id, last_fetched_at 
+FROM feeds
+ORDER BY last_fetched_at ASC NULLS FIRST
+LIMIT 1
+`
+
+func (q *Queries) FeedsGetNextToFetch(ctx context.Context) (Feed, error) {
+	row := q.db.QueryRowContext(ctx, feedsGetNextToFetch)
+	var i Feed
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.Url,
+		&i.UserID,
+		&i.LastFetchedAt,
+	)
+	return i, err
+}
+
+const feedsMarkedFetched = `-- name: FeedsMarkedFetched :one
+
+UPDATE feeds
+SET updated_at = NOW(), last_fetched_at = NOW()
+WHERE id = $1
+RETURNING id, created_at, updated_at, name, url, user_id, last_fetched_at
+`
+
+func (q *Queries) FeedsMarkedFetched(ctx context.Context, id uuid.UUID) (Feed, error) {
+	row := q.db.QueryRowContext(ctx, feedsMarkedFetched, id)
+	var i Feed
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.Url,
+		&i.UserID,
+		&i.LastFetchedAt,
+	)
+	return i, err
+}
+
 const feedsReset = `-- name: FeedsReset :exec
+
 DELETE FROM feeds
 `
 
